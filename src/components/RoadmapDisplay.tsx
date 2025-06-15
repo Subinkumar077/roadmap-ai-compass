@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react';
 import { RoadmapData } from '@/types/roadmap';
 import RoadmapFlowchart from './RoadmapFlowchart';
+import jsPDF from 'jspdf';
 
 interface RoadmapDisplayProps {
   roadmap: RoadmapData;
@@ -37,6 +37,97 @@ const RoadmapDisplay = ({ roadmap, onGenerateNew }: RoadmapDisplayProps) => {
       newCompleted.add(phaseId);
     }
     setCompletedPhases(newCompleted);
+  };
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height;
+    let yPosition = 20;
+    
+    // Title
+    doc.setFontSize(20);
+    doc.text(roadmap.title, 20, yPosition);
+    yPosition += 15;
+    
+    // Description
+    doc.setFontSize(12);
+    const splitDescription = doc.splitTextToSize(roadmap.description, 170);
+    doc.text(splitDescription, 20, yPosition);
+    yPosition += splitDescription.length * 5 + 10;
+    
+    // Basic info
+    doc.setFontSize(11);
+    doc.text(`Level: ${roadmap.level}`, 20, yPosition);
+    yPosition += 8;
+    doc.text(`Duration: ${roadmap.totalDuration}`, 20, yPosition);
+    yPosition += 8;
+    doc.text(`Phases: ${roadmap.phases.length}`, 20, yPosition);
+    yPosition += 15;
+    
+    // Phases
+    roadmap.phases.forEach((phase, index) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      // Phase title
+      doc.setFontSize(14);
+      doc.text(`Phase ${index + 1}: ${phase.title}`, 20, yPosition);
+      yPosition += 10;
+      
+      // Phase description
+      doc.setFontSize(10);
+      const splitPhaseDesc = doc.splitTextToSize(phase.description, 170);
+      doc.text(splitPhaseDesc, 20, yPosition);
+      yPosition += splitPhaseDesc.length * 4 + 5;
+      
+      // Duration
+      doc.text(`Duration: ${phase.duration}`, 20, yPosition);
+      yPosition += 8;
+      
+      // Prerequisites
+      if (phase.prerequisites && phase.prerequisites.length > 0) {
+        doc.text('Prerequisites:', 20, yPosition);
+        yPosition += 6;
+        phase.prerequisites.forEach(prereq => {
+          const splitPrereq = doc.splitTextToSize(`• ${prereq}`, 160);
+          doc.text(splitPrereq, 25, yPosition);
+          yPosition += splitPrereq.length * 4;
+        });
+        yPosition += 5;
+      }
+      
+      // Resources
+      if (phase.resources && phase.resources.length > 0) {
+        doc.text('Resources:', 20, yPosition);
+        yPosition += 6;
+        phase.resources.forEach(resource => {
+          const resourceText = `• ${resource.title} (${resource.type})`;
+          const splitResource = doc.splitTextToSize(resourceText, 160);
+          doc.text(splitResource, 25, yPosition);
+          yPosition += splitResource.length * 4;
+        });
+        yPosition += 5;
+      }
+      
+      // Projects
+      if (phase.projects && phase.projects.length > 0) {
+        doc.text('Projects:', 20, yPosition);
+        yPosition += 6;
+        phase.projects.forEach(project => {
+          const splitProject = doc.splitTextToSize(`• ${project}`, 160);
+          doc.text(splitProject, 25, yPosition);
+          yPosition += splitProject.length * 4;
+        });
+      }
+      
+      yPosition += 15;
+    });
+    
+    // Save the PDF
+    doc.save(`${roadmap.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_roadmap.pdf`);
   };
 
   const getResourceIcon = (type: string) => {
@@ -87,6 +178,7 @@ const RoadmapDisplay = ({ roadmap, onGenerateNew }: RoadmapDisplayProps) => {
             Generate New
           </Button>
           <Button
+            onClick={downloadPDF}
             variant="outline"
             className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700"
           >
